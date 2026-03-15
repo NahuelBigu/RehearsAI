@@ -1,0 +1,8 @@
+{
+  "name": "RehearsAI v0 ",
+  "description": "Simulador Multimodal de Conversaciones Críticas",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
