@@ -48,7 +48,16 @@ You will attach this secret to the Cloud Run service in a later step.
 ### 5. Create a containerized static server (Cloud Buildpacks + Express)
 
 Cloud Run needs a container image. The easiest way (without Dockerfile) is to let **Cloud Build** generate it from your source.  
-This repo incluye un pequeño servidor Express (`server.cjs`) que sirve el contenido estático de `dist` y escucha en `PORT`:
+This repo incluye:
+
+- un pequeño servidor Express (`server.cjs`) que sirve el contenido estático de `dist` y escucha en `PORT`
+- un `Procfile` con:
+
+```text
+web: npm start
+```
+
+Los buildpacks de Node detectan ese `Procfile` y configuran automáticamente el comando de arranque del contenedor.
 
 ```bash
 npm run build        # genera dist
