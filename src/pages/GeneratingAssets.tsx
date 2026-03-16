@@ -13,13 +13,18 @@ export function GeneratingAssets() {
   const [status, setStatus] = useState(t('gen.analyzing'));
 
   useEffect(() => {
-    if (!setupData.userImageBase64) {
-      navigate('/');
-      return;
-    }
-
     const generate = async () => {
       try {
+        if (!setupData.userImageBase64) {
+          setStatus(t('gen.skipping'));
+          setSelectedVoice('Zephyr'); // Default voice
+          setAiAvatars({});
+          setTimeout(() => {
+            navigate('/simulation');
+          }, 1000);
+          return;
+        }
+
         setStatus(t('gen.detecting'));
         const { voice } = await detectGenderAndVoice(setupData.userImageBase64!);
         setSelectedVoice(voice);
@@ -50,15 +55,19 @@ export function GeneratingAssets() {
         }
 
         // Fallback: Use the original image for all emotions
-        const fallbackAvatars = {
-          neutral: setupData.userImageBase64!,
-          happy: setupData.userImageBase64!,
-          angry: setupData.userImageBase64!,
-          impatient: setupData.userImageBase64!,
-          sad: setupData.userImageBase64!,
-          surprised: setupData.userImageBase64!
-        };
-        setAiAvatars(fallbackAvatars);
+        if (setupData.userImageBase64) {
+          const fallbackAvatars = {
+            neutral: setupData.userImageBase64,
+            happy: setupData.userImageBase64,
+            angry: setupData.userImageBase64,
+            impatient: setupData.userImageBase64,
+            sad: setupData.userImageBase64,
+            surprised: setupData.userImageBase64
+          };
+          setAiAvatars(fallbackAvatars);
+        } else {
+          setAiAvatars({});
+        }
         
         setStatus(t('gen.error'));
         setTimeout(() => {
@@ -68,7 +77,7 @@ export function GeneratingAssets() {
     };
 
     generate();
-  }, [setupData, navigate, setAiAvatars, setSelectedVoice]);
+  }, [setupData, navigate, setAiAvatars, setSelectedVoice, t]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-sans p-6">

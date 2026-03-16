@@ -8,13 +8,69 @@ import { ReactFlow, Background, Controls, MiniMap, ReactFlowInstance } from '@xy
 import '@xyflow/react/dist/style.css';
 import { Mic, MicOff, Video, VideoOff, Rewind, Play } from 'lucide-react';
 import { CustomNode } from '../components/CustomNode';
+import { StartNode } from '../components/StartNode';
+
+const VOICES = [
+  { name: 'Achernar', gender: 'Female' },
+  { name: 'Achird', gender: 'Male' },
+  { name: 'Algenib', gender: 'Male' },
+  { name: 'Algieba', gender: 'Male' },
+  { name: 'Alnilam', gender: 'Male' },
+  { name: 'Aoede', gender: 'Female' },
+  { name: 'Autonoe', gender: 'Female' },
+  { name: 'Callirrhoe', gender: 'Female' },
+  { name: 'Charon', gender: 'Male' },
+  { name: 'Despina', gender: 'Female' },
+  { name: 'Enceladus', gender: 'Male' },
+  { name: 'Erinome', gender: 'Female' },
+  { name: 'Fenrir', gender: 'Male' },
+  { name: 'Gacrux', gender: 'Female' },
+  { name: 'Iapetus', gender: 'Male' },
+  { name: 'Kore', gender: 'Female' },
+  { name: 'Laomedeia', gender: 'Female' },
+  { name: 'Leda', gender: 'Female' },
+  { name: 'Orus', gender: 'Male' },
+  { name: 'Pulcherrima', gender: 'Female' },
+  { name: 'Puck', gender: 'Male' },
+  { name: 'Rasalgethi', gender: 'Male' },
+  { name: 'Sadachbia', gender: 'Male' },
+  { name: 'Sadaltager', gender: 'Male' },
+  { name: 'Schedar', gender: 'Male' },
+  { name: 'Sulafat', gender: 'Female' },
+  { name: 'Umbriel', gender: 'Male' },
+  { name: 'Vindemiatrix', gender: 'Female' },
+  { name: 'Zephyr', gender: 'Female' },
+  { name: 'Zubenelgenubi', gender: 'Male' },
+];
 
 export function Simulation() {
   const navigate = useNavigate();
-  const { setupData, aiAvatars, selectedVoice, nodes, edges, addNode, updateNodeText, setNodeText, updateNodeEmotion, updateNodePerception, getHistory, markInterrupted, rewindToNode, currentNodeId, selectGhostNode, setCurrentNodeId } = useSimulation();
+  const { 
+    setupData, 
+    aiAvatars, 
+    selectedVoice, 
+    setSelectedVoice,
+    hasSelectedVoice,
+    setHasSelectedVoice,
+    nodes, 
+    edges, 
+    addNode, 
+    updateNodeText, 
+    setNodeText, 
+    updateNodeEmotion, 
+    updateNodePerception, 
+    getHistory, 
+    markInterrupted, 
+    rewindToNode, 
+    currentNodeId, 
+    isRecording,
+    setIsRecording,
+    selectGhostNode, 
+    setCurrentNodeId 
+  } = useSimulation();
   const { t, i18n } = useTranslation();
   
-  const [isRecording, setIsRecording] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [currentEmotion, setCurrentEmotion] = useState('neutral');
   const [currentEmotionLabel, setCurrentEmotionLabel] = useState('Neutral');
@@ -30,7 +86,10 @@ export function Simulation() {
   const lastUserNodeIdRef = useRef<string | null>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
 
-  const nodeTypes = useMemo(() => ({ customNode: CustomNode }), []);
+  const nodeTypes = useMemo(() => ({ 
+    customNode: CustomNode,
+    startNode: StartNode
+  }), []);
 
   useEffect(() => {
     if (rfInstance && nodes.length > 0) {
@@ -51,13 +110,50 @@ export function Simulation() {
   }, [currentNodeId, rfInstance]);
 
   useEffect(() => {
-    if (!setupData.objective || Object.keys(aiAvatars).length === 0) {
+    if (!setupData.objective) {
       navigate('/');
+      return;
     }
-  }, [setupData, aiAvatars, navigate]);
+
+    // Dynamic voice selection based on personality - ONLY ONCE
+    const selectDynamicVoice = async () => {
+      if (hasSelectedVoice) return;
+      
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      try {
+        const voiceAnalysis = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Analyze the following character profile and select the best voice from the provided list.
+          Profile: "${setupData.profile}"
+          Name: "${setupData.name}"
+          Relationship: "${setupData.relationship}"
+          Gender: "${setupData.gender || 'Not specified'}"
+
+          Available voices:
+          ${VOICES.map(v => `- ${v.name}: ${v.gender}`).join('\n')}
+
+          Respond ONLY with the name of the voice (e.g., Zephyr).`,
+        });
+        const suggestedVoice = voiceAnalysis.text?.trim();
+        if (suggestedVoice && VOICES.some(v => v.name === suggestedVoice)) {
+          setSelectedVoice(suggestedVoice);
+          setHasSelectedVoice(true);
+          console.log("Voz seleccionada dinámicamente:", suggestedVoice);
+        } else {
+          setHasSelectedVoice(true); // Mark as done even if fallback
+        }
+      } catch (e) {
+        console.warn("Error seleccionando voz dinámica, usando predeterminada:", e);
+        setHasSelectedVoice(true);
+      }
+    };
+
+    selectDynamicVoice();
+  }, [setupData, navigate, hasSelectedVoice, setSelectedVoice, setHasSelectedVoice]);
 
   const startSimulation = async (startNodeId?: string) => {
-    if (isRecording) return;
+    if (isRecording || isStarting) return;
+    setIsStarting(true);
     
     try {
       // Setup local webcam preview first to catch permission errors early
@@ -116,7 +212,7 @@ export function Simulation() {
       let historyContext = "";
       const targetNodeId = startNodeId || currentNodeId;
       if (targetNodeId) {
-        const history = getHistory(targetNodeId);
+        const history = getHistory(targetNodeId).filter(h => h.role !== 'start');
         if (history.length > 0) {
           historyContext = "\n\nPrevious conversation history:\n" + 
             history.map(h => `${h.role === 'user' ? 'User' : 'You'}: ${h.text}`).join('\n');
@@ -130,18 +226,18 @@ El nombre del usuario es: "${setupData.userName}".
 Tu relación con el usuario es: "${setupData.relationship}".
 El objetivo del usuario es: "${setupData.objective}".
 El nivel de dificultad de esta simulación es: "${setupData.difficulty || 'Intermedio'}". Ajusta tu nivel de cooperación, paciencia y disposición a estar de acuerdo basándote en esta dificultad.
-Debes responder de forma natural, usando voz, en Español. SIEMPRE genera tu respuesta hablada primero. LUEGO, al final de tu turno, DEBES llamar a la herramienta "report_state" para proporcionar metadatos sobre la interacción. Presta mucha atención al tono de voz del usuario (ej. enojado, triste, enfático) y a sus expresiones faciales/lenguaje corporal si la cámara está encendida. Usa estas características para adaptar tu interacción y reportalas detalladamente.
+Debes responder de forma natural, usando voz, en Español. Actúa como una persona real: no hagas preguntas constantemente ni esperes confirmación para todo. Si la situación lo amerita, toma la iniciativa o mantén tu postura. SIEMPRE genera tu respuesta hablada primero. LUEGO, al final de tu turno, DEBES llamar a la herramienta "report_state" para proporcionar metadatos sobre la interacción. Presta mucha atención al tono de voz del usuario (ej. enojado, triste, enfático) y a sus expresiones faciales/lenguaje corporal si la cámara está encendida. Usa estas características para adaptar tu interacción y reportalas detalladamente.
 
-IMPORTANTE: Usa el parámetro "alternative_response" en "report_state" SOLAMENTE cuando el usuario haga una pregunta de sí/no, pregunte si algo está bien o mal, haga una pregunta de toma de decisiones (ej. "¿hago A o B?"), u otros casos específicos donde sea estrictamente necesario abrir un camino alternativo. NO lo uses en cada respuesta. Cuando lo uses, el texto debe ser TU respuesta alternativa hablada (lo que habrías dicho en su lugar).${historyContext}`
+IMPORTANTE: Cuando el usuario te pregunte si quieres ir a algún lado o si te gusta algo, DEBES elegir aleatoriamente entre responder "Sí" o "No" (con una breve explicación natural). En estos casos, DEBES llamar a "report_state" e incluir en "alternative_response" la respuesta contraria (si dijiste Sí, la alternativa es No, y viceversa). Para otras preguntas de sí/no o toma de decisiones, usa "alternative_response" según sea necesario. NO lo uses en cada respuesta. Cuando lo uses, el texto debe ser TU respuesta alternativa hablada (lo que habrías dicho en su lugar).${historyContext}`
         : `You are participating in a critical conversation simulation.
 Roleplay as ${setupData.name ? setupData.name + ', ' : ''}the person described in this profile: "${setupData.profile}".
 The user's name is: "${setupData.userName}".
 Your relationship with the user is: "${setupData.relationship}".
 The user's objective is: "${setupData.objective}".
 The difficulty level of this simulation is: "${setupData.difficulty || 'Intermedio'}". Adjust your cooperativeness, patience, and willingness to agree based on this difficulty.
-You must respond naturally, using voice, in English. ALWAYS generate your spoken response first. THEN, at the very end of your turn, you MUST call the "report_state" tool to provide metadata about the interaction. Pay close attention to the user's tone of voice (e.g., angry, sad, emphatic) and their facial expressions/body language if the camera is on. Use these characteristics to adapt your interaction and report them in detail.
+You must respond naturally, using voice, in English. Act like a real person: do not constantly ask questions or wait for confirmation for everything. If the situation warrants it, take the initiative or stand your ground. ALWAYS generate your spoken response first. THEN, at the very end of your turn, you MUST call the "report_state" tool to provide metadata about the interaction. Pay close attention to the user's tone of voice (e.g., angry, sad, emphatic) and their facial expressions/body language if the camera is on. Use these characteristics to adapt your interaction and report them in detail.
 
-IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when the user asks a yes/no question, asks if something is right or wrong, asks a decision-making question (e.g., "Should I do A or B?"), or in other specific cases where it is strictly necessary to open an alternative path. Do NOT use it for every response. When you do use it, the text must be YOUR alternative spoken response (what you would have said instead).${historyContext}`;
+IMPORTANT: When the user asks if you want to go somewhere or if you like something, you MUST randomly choose between answering "Yes" or "No" (with a brief natural explanation). In these cases, you MUST call "report_state" and include the opposite response in "alternative_response" (if you said Yes, the alternative is No, and vice versa). For other yes/no or decision-making questions, use "alternative_response" as necessary. Do NOT use it for every response. When you do use it, the text must be YOUR alternative spoken response (what you would have said instead).${historyContext}`;
 
       const sessionPromise = ai.live.connect({
         model: "gemini-2.5-flash-native-audio-preview-09-2025",
@@ -178,6 +274,7 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
           onopen: () => {
             console.log("Live API connected");
             setIsRecording(true);
+            setIsStarting(false);
             
             // Start audio streaming
             audioStreamerRef.current = new AudioStreamer((base64) => {
@@ -346,6 +443,7 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
           },
           onerror: (error) => {
             console.error("Live API error:", error);
+            setIsStarting(false);
             if (error instanceof Error && error.message.includes("permission")) {
               alert(t('sim.permissionError'));
             } else if (error instanceof Error && error.message.includes("Internal error")) {
@@ -363,6 +461,7 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
 
     } catch (error) {
       console.error("Failed to start simulation:", error);
+      setIsStarting(false);
       if (error instanceof Error) {
         alert(`${t('sim.startError')}${error.message}`);
       }
@@ -411,8 +510,18 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
       }
     };
     window.addEventListener('simulation:rewind', handleRewind);
-    return () => window.removeEventListener('simulation:rewind', handleRewind);
-  }, [isRecording, rfInstance, setCurrentNodeId]);
+    
+    const handleStartFromNode = (e: any) => {
+      const { nodeId } = e.detail;
+      startSimulation(nodeId);
+    };
+    window.addEventListener('simulation:start_from_node', handleStartFromNode);
+
+    return () => {
+      window.removeEventListener('simulation:rewind', handleRewind);
+      window.removeEventListener('simulation:start_from_node', handleStartFromNode);
+    };
+  }, [isRecording, rfInstance, setCurrentNodeId, startSimulation]);
 
   useEffect(() => {
     const handleGenerateAlts = async (e: any) => {
@@ -438,7 +547,7 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
           const edge = edges.find(ed => ed.target === curr);
           curr = edge ? edge.source : null;
         }
-        const historyText = path.map(n => `${n.data.role === 'user' ? 'User' : 'AI'}: ${n.data.text}`).join('\n');
+        const historyText = path.filter(n => n.data.role !== 'start').map(n => `${n.data.role === 'user' ? 'User' : 'AI'}: ${n.data.text}`).join('\n');
         
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
@@ -531,13 +640,19 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
           
           <button 
             onClick={isRecording ? stopSimulation : startSimulation}
+            disabled={isStarting}
             className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all shadow-sm ${
               isRecording 
                 ? 'bg-rose-600 hover:bg-rose-700 text-white' 
                 : 'bg-violet-600 hover:bg-violet-700 text-white'
-            }`}
+            } ${isStarting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            {isRecording ? (
+            {isStarting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {t('setup.starting')}
+              </>
+            ) : isRecording ? (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" strokeLinecap="round" strokeLinejoin="round"></path>
@@ -615,8 +730,11 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
                 className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
               />
               {!isVideoEnabled && (
-                <div className="w-full h-full flex items-center justify-center text-slate-400">
-                  <VideoOff className="w-6 h-6" />
+                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-200/50 text-slate-400 gap-2">
+                  <div className="p-4 bg-slate-100 rounded-full shadow-inner">
+                    <VideoOff className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('sim.camError').replace('.', '')}</span>
                 </div>
               )}
               <canvas ref={canvasRef} className="hidden" />
@@ -638,8 +756,9 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{t('setup.personality')}</h3>
               <div className="flex flex-wrap gap-1.5">
                 {setupData.profile?.split('.').map((part, i) => {
-                  if (part.includes('Personalidad core:')) {
-                    return part.replace('Personalidad core:', '').split(',').map((trait, j) => (
+                  const personalityPrefix = t('setup.personality');
+                  if (part.includes(personalityPrefix)) {
+                    return part.split(':')[1]?.split(',').map((trait, j) => (
                       <span key={`trait-${i}-${j}`} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase tracking-wider border border-slate-200">
                         {trait.trim()}
                       </span>
@@ -648,11 +767,11 @@ IMPORTANT: Use the "alternative_response" parameter in "report_state" ONLY when 
                   return null;
                 })}
               </div>
-              {setupData.profile?.includes('Notas adicionales:') && (
+              {setupData.profile?.includes(t('setup.notes')) && (
                 <div className="mt-3">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">{t('setup.notes')}</span>
                   <p className="text-[11px] text-slate-600 italic leading-snug">
-                    {setupData.profile.split('Notas adicionales:')[1].trim()}
+                    {setupData.profile.split(`${t('setup.notes')}:`)[1]?.trim()}
                   </p>
                 </div>
               )}

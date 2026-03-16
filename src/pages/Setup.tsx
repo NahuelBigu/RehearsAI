@@ -8,9 +8,32 @@ import { ChevronDown, Check } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { AudioStreamer, AudioPlayer } from '../lib/audio';
 
+const VoiceVisualizer = ({ isActive }: { isActive: boolean }) => {
+  return (
+    <div className="flex items-center justify-center gap-1.5 h-12">
+      {[...Array(12)].map((_, i) => (
+        <motion.div
+          key={i}
+          animate={{
+            height: isActive ? [12, 32, 16, 40, 12] : 6,
+            opacity: isActive ? 1 : 0.3,
+          }}
+          transition={{
+            duration: 0.8,
+            repeat: Infinity,
+            delay: i * 0.05,
+            ease: "easeInOut"
+          }}
+          className="w-1.5 bg-violet-500 rounded-full"
+        />
+      ))}
+    </div>
+  );
+};
+
 export function Setup() {
   const navigate = useNavigate();
-  const { setSetupData } = useSimulation();
+  const { setSetupData, setSelectedVoice } = useSimulation();
   const { t, i18n } = useTranslation();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -23,6 +46,7 @@ export function Setup() {
   const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
   const [setupMode, setSetupMode] = useState<'select' | 'manual' | 'ai'>('select');
   const [manualNotes, setManualNotes] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
   const [difficulty, setDifficulty] = useState<'Fácil' | 'Intermedio' | 'Difícil'>('Intermedio');
   const [skipImageGeneration, setSkipImageGeneration] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -34,6 +58,29 @@ export function Setup() {
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [liveMessages, setLiveMessages] = useState<{role: 'user' | 'ai', text: string}[]>([]);
+
+  // Refs to avoid stale closures in Live API callbacks
+  const profileRef = useRef({
+    name,
+    userName,
+    relationship,
+    objective,
+    selectedPersonalities,
+    manualNotes,
+    gender
+  });
+
+  useEffect(() => {
+    profileRef.current = {
+      name,
+      userName,
+      relationship,
+      objective,
+      selectedPersonalities,
+      manualNotes,
+      gender
+    };
+  }, [name, userName, relationship, objective, selectedPersonalities, manualNotes, gender]);
   
   const liveSessionRef = useRef<any>(null);
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
@@ -154,16 +201,37 @@ export function Setup() {
 
       const updateProfileTool: FunctionDeclaration = {
         name: "updateProfile",
-        description: "Update the user's simulation profile based on the conversation.",
+        description: "Update the user's simulation profile. Call this frequently to add new information as you learn it during the conversation.",
         parameters: {
           type: Type.OBJECT,
           properties: {
-            objective: { type: Type.STRING, description: "The objective of the conversation." },
-            personalities: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Core personality traits of the interlocutor." },
-            notes: { type: Type.STRING, description: "Additional notes about the interlocutor." },
-            name: { type: Type.STRING, description: "The name of the interlocutor." },
-            relationship: { type: Type.STRING, description: "The relationship between the user and the interlocutor." },
+            newObjectiveText: { type: Type.STRING, description: "New text to APPEND to the objective of the conversation." },
+            rewriteObjective: { type: Type.STRING, description: "Text to REWRITE the entire objective. Use this if the objective was misheard or needs a complete correction." },
+            newPersonalities: { type: Type.ARRAY, items: { type: Type.STRING }, description: "New personality traits to ADD to the interlocutor." },
+            newNotesText: { type: Type.STRING, description: "New text to APPEND to the additional notes." },
+            name: { type: Type.STRING, description: "The name of the interlocutor (the person the AI will roleplay). Overwrites previous." },
+            gender: { type: Type.STRING, enum: ['Male', 'Female', 'Other'], description: "The gender of the interlocutor. Overwrites previous." },
+            relationship: { type: Type.STRING, description: "The relationship between the user and the interlocutor. Overwrites previous." },
+            userName: { type: Type.STRING, description: "The name of the user themselves (the person talking to you right now). Overwrites previous." }
           }
+        }
+      };
+
+      const getCurrentProfileTool: FunctionDeclaration = {
+        name: "getCurrentProfile",
+        description: "Get the current state of the profile information gathered so far to verify if everything is correct.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {}
+        }
+      };
+
+      const startSimulationTool: FunctionDeclaration = {
+        name: "startSimulation",
+        description: "Start the simulation once all required information is gathered and the user is ready.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {}
         }
       };
 
@@ -191,10 +259,20 @@ export function Setup() {
             }
             
             // Handle transcription
+            if (message.serverContent?.outputTranscription?.text) {
+              // AI transcription is hidden as per user request
+            }
+            
+            if (message.serverContent?.inputTranscription?.text) {
+              // User transcription is hidden as per user request
+            }
+            
+            // Fallback: Handle text directly from modelTurn if transcription is not used
             if (message.serverContent?.modelTurn?.parts) {
               const textPart = message.serverContent.modelTurn.parts.find(p => p.text);
               if (textPart && textPart.text) {
-                setLiveMessages(prev => [...prev, { role: 'ai', text: textPart.text! }]);
+                // AI transcription is hidden as per user request
+                // setLiveMessages(prev => [...prev, { role: 'ai', text: textPart.text! }]);
               }
             }
             
@@ -205,10 +283,14 @@ export function Setup() {
                 for (const call of calls) {
                   if (call.name === 'updateProfile') {
                     const args = call.args as any;
-                    if (args.objective) setObjective(args.objective);
-                    if (args.personalities) setSelectedPersonalities(args.personalities);
-                    if (args.notes) setManualNotes(args.notes);
+                    if (args.rewriteObjective) setObjective(args.rewriteObjective);
+                    else if (args.newObjectiveText) setObjective(prev => prev ? prev + ' ' + args.newObjectiveText : args.newObjectiveText);
+                    
+                    if (args.newPersonalities) setSelectedPersonalities(prev => Array.from(new Set([...prev, ...args.newPersonalities])));
+                    if (args.newNotesText) setManualNotes(prev => prev ? prev + ' ' + args.newNotesText : args.newNotesText);
                     if (args.name) setName(args.name);
+                    if (args.gender) setGender(args.gender as any);
+                    if (args.userName) setUserName(args.userName);
                     if (args.relationship) {
                       setRelationshipPreset('custom');
                       setRelationship(args.relationship);
@@ -224,6 +306,37 @@ export function Setup() {
                         }]
                       });
                     });
+                  } else if (call.name === 'getCurrentProfile') {
+                    sessionPromise.then(session => {
+                      session.sendToolResponse({
+                        functionResponses: [{
+                          id: call.id,
+                          name: call.name,
+                          response: profileRef.current
+                        }]
+                      });
+                    });
+                  } else if (call.name === 'startSimulation') {
+                    sessionPromise.then(session => {
+                      session.sendToolResponse({
+                        functionResponses: [{
+                          id: call.id,
+                          name: call.name,
+                          response: { success: true }
+                        }]
+                      });
+                    });
+                    
+                    stopLiveSession();
+                    setTimeout(() => {
+                      // We need to trigger the submit button or call handleSubmit directly
+                      // But handleSubmit requires the event or just no args.
+                      // We can dispatch a custom event or just call a function.
+                      // Since handleSubmit is in scope, we can just call it.
+                      // However, we need to make sure state is updated.
+                      const submitBtn = document.getElementById('start-simulation-btn');
+                      if (submitBtn) submitBtn.click();
+                    }, 500);
                   }
                 }
               }
@@ -246,16 +359,32 @@ export function Setup() {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } }
           },
-          systemInstruction: `You are a friendly RehearsAI expert. Your goal is to help the user set up a roleplay simulation. 
-You need to gather:
-1. The name of the person they want to simulate (interlocutor).
-2. The user's relationship to this person.
-3. The objective of the conversation.
-4. The core personality traits of the interlocutor.
-5. Any additional notes.
+          systemInstruction: `You are a friendly RehearsAI expert. Your ONLY goal is to help the user set up a roleplay simulation by gathering information. 
+CRITICAL: You are NOT the person they want to simulate. Do NOT roleplay the situation. You are just the setup assistant.
 
-Ask one question at a time. Be conversational and empathetic. When you have enough information, call the updateProfile tool to save the data.`,
-          tools: [{ functionDeclarations: [updateProfileTool] }],
+IMPORTANT CLARIFICATION:
+- "User Name" (userName): This is the name of the person you are talking to right now.
+- "Interlocutor Name" (name): This is the name of the person the AI will simulate in the roleplay.
+Make sure to distinguish between these two.
+
+Current state of User Name: ${userName ? `The user's name is already set to "${userName}". Do NOT ask for it unless they want to change it.` : 'User name is NOT set yet. Please ask for it.'}
+
+You need to gather:
+1. The user's name (userName).
+2. The name of the person they want to simulate (name).
+3. The gender of the interlocutor (gender: Male, Female, or Other). Deduce it automatically from the name (e.g., "Maria", "Juan") or from relationship terms (e.g., "mi jefa", "mi esposa", "mi madre" -> Female; "mi jefe", "mi marido", "mi padre" -> Male). Call updateProfile as soon as you deduce it. If unsure, ask politely.
+4. The user's relationship to this person.
+5. The objective of the conversation.
+6. The core personality traits of the interlocutor.
+7. Any additional notes.
+
+Ask one question at a time. Be conversational and empathetic. 
+CRITICAL: Call the 'updateProfile' tool FREQUENTLY during the conversation as soon as you learn new information, do not wait until the end. 
+When calling 'updateProfile', only provide the NEW information to be added. If you misheard something or need to correct the objective, use 'rewriteObjective'.
+You can use 'getCurrentProfile' if you need to review what has been gathered so far to verify with the user.
+
+Once you have gathered all the information (including gender), ask the user if they are ready to start the simulation. If they are, call the 'startSimulation' tool. Note: The simulation will only start if all information is filled out.`,
+          tools: [{ functionDeclarations: [updateProfileTool, getCurrentProfileTool, startSimulationTool] }],
           outputAudioTranscription: {},
           inputAudioTranscription: {},
         }
@@ -293,7 +422,14 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!imagePreview || !name || !userName || !relationship || !objective || (selectedPersonalities.length === 0 && !manualNotes)) return;
+    if (!name || !userName || !relationship || !objective || (selectedPersonalities.length === 0 && !manualNotes)) return;
+
+    // Set voice based on gender
+    if (gender === 'Female') {
+      setSelectedVoice('Zephyr');
+    } else if (gender === 'Male') {
+      setSelectedVoice('Charon');
+    }
 
     const profileParts = [];
     if (selectedPersonalities.length > 0) {
@@ -310,6 +446,7 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
       userImageBase64: imagePreview,
       objective,
       profile: profileParts.join('. '),
+      gender: gender || undefined,
       difficulty,
       skipImageGeneration,
     });
@@ -379,6 +516,23 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
                   required
                 />
 
+                <div className="flex gap-2 mb-4">
+                  {(['Male', 'Female', 'Other'] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender(g)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                        gender === g 
+                          ? 'bg-violet-600 border-violet-600 text-white shadow-md' 
+                          : 'bg-white border-slate-200 text-slate-400 hover:border-violet-300'
+                      }`}
+                    >
+                      {t(`setup.gender.${g.toLowerCase()}`)}
+                    </button>
+                  ))}
+                </div>
+
                 <button 
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -420,10 +574,10 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
                       {isDropdownOpen && (
                         <motion.div
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 5, scale: 1 }}
+                          animate={{ opacity: 1, y: -5, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
                           transition={{ duration: 0.2, ease: "easeOut" }}
-                          className="absolute z-50 w-full mt-2 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden py-2"
+                          className="absolute z-50 w-full bottom-full mb-2 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden py-2"
                         >
                           <div className="max-h-60 overflow-y-auto custom-scrollbar px-1">
                             {relationshipOptions.map((opt, index) => {
@@ -508,8 +662,9 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
               <span className="text-sm">{t('setup.advancedSettings')}</span>
             </button>
             <button 
+              id="start-simulation-btn"
               onClick={handleSubmit}
-              disabled={!imagePreview || !name || !userName || !relationship || !objective || (selectedPersonalities.length === 0 && !manualNotes)}
+              disabled={!name || !userName || !relationship || !objective || (selectedPersonalities.length === 0 && !manualNotes)}
               className="w-full bg-violet-600 hover:bg-violet-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-violet-600/20"
             >
               <span className="text-sm">{t('setup.start')}</span>
@@ -556,6 +711,16 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
           </div>
         ) : setupMode === 'manual' ? (
           <div className="max-w-5xl mx-auto space-y-6 pb-12">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">{t('setup.mode.manual')}</h2>
+              <button 
+                onClick={() => setSetupMode('ai')}
+                className="flex items-center gap-2 px-4 py-2 bg-violet-100 text-violet-700 rounded-xl font-bold text-sm hover:bg-violet-200 transition-colors"
+              >
+                <Brain className="w-4 h-4" />
+                {i18n.language.startsWith('es') ? 'Hablar con el experto' : 'Talk to expert'}
+              </button>
+            </div>
             <div className="grid grid-cols-12 gap-6">
               
               {/* Objective */}
@@ -649,7 +814,7 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
                             disabled={isLiveConnecting}
                             className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition-colors disabled:opacity-50"
                           >
-                            {isLiveConnecting ? t('setup.expert.connecting') : "Conectar"}
+                            {isLiveConnecting ? t('setup.expert.connecting') : t('setup.expert.connect')}
                           </button>
                         ) : (
                           <>
@@ -670,22 +835,32 @@ Ask one question at a time. Be conversational and empathetic. When you have enou
                       </div>
                     </div>
                     
-                    <div className="bg-slate-50 rounded-2xl p-6 min-h-[300px] max-h-[400px] overflow-y-auto custom-scrollbar flex flex-col gap-4 border border-slate-100">
-                      {liveMessages.length === 0 && !isLiveConnected && (
-                        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm italic">
-                          Haz clic en Conectar para empezar a hablar con el experto.
+                    <div className="bg-slate-50 rounded-2xl p-6 min-h-[300px] max-h-[400px] overflow-y-auto custom-scrollbar flex flex-col items-center justify-center gap-4 border border-slate-100">
+                      {isLiveConnected ? (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="p-8 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center w-full max-w-xs"
+                        >
+                          <VoiceVisualizer isActive={aiSpeaking} />
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-6">
+                            {aiSpeaking ? t('setup.expert.speaking') : t('setup.expert.listening')}
+                          </p>
+                          <div className="mt-8 flex flex-col items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${aiSpeaking ? 'bg-violet-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">
+                              {aiSpeaking ? t('setup.expert.aiResponding') : t('setup.expert.aiListening')}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-sm italic gap-4">
+                          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
+                            <Mic className="w-8 h-8" />
+                          </div>
+                          <p>{t('setup.expert.clickConnect')}</p>
                         </div>
                       )}
-                      {liveMessages.map((msg, idx) => (
-                        <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                          <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-slate-200' : 'bg-violet-100'}`}>
-                            {msg.role === 'user' ? <User className="w-4 h-4 text-slate-500" /> : <Brain className="w-4 h-4 text-violet-600" />}
-                          </div>
-                          <div className={`p-4 rounded-2xl shadow-sm text-sm ${msg.role === 'user' ? 'bg-violet-600 text-white rounded-tr-none' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'}`}>
-                            {msg.text}
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </div>

@@ -4,16 +4,21 @@ import { useSimulation } from '../context/SimulationContext';
 import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { CustomNode } from '../components/CustomNode';
-import { ArrowLeft, RefreshCw, MessageSquare, GitMerge } from 'lucide-react';
+import { StartNode } from '../components/StartNode';
+import { ArrowLeft, RefreshCw, MessageSquare, GitMerge, VideoOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export function Review() {
   const navigate = useNavigate();
   const { setupData, aiAvatars, nodes, edges, resetSimulation, getHistory, currentNodeId } = useSimulation();
   const [viewMode, setViewMode] = useState<'tree' | 'chat'>('chat');
+  const [selectedPathNodeId, setSelectedPathNodeId] = useState<string | null>(null);
   const { t } = useTranslation();
   
-  const nodeTypes = useMemo(() => ({ customNode: CustomNode }), []);
+  const nodeTypes = useMemo(() => ({ 
+    customNode: CustomNode,
+    startNode: StartNode
+  }), []);
 
   const handleRestart = () => {
     resetSimulation();
@@ -21,8 +26,48 @@ export function Review() {
   };
 
   // Get the history of the selected path (or the last node if none selected)
-  const lastNodeId = currentNodeId || (nodes.length > 0 ? nodes[nodes.length - 1].id : null);
+  const lastNodeId = selectedPathNodeId || currentNodeId || (nodes.length > 0 ? nodes[nodes.length - 1].id : null);
   const history = lastNodeId ? getHistory(lastNodeId) : [];
+
+  const selectedPath = useMemo(() => {
+    if (!lastNodeId) return new Set();
+    const path = new Set();
+    let curr = lastNodeId;
+    while (curr) {
+      path.add(curr);
+      const edge = edges.find(e => e.target === curr);
+      curr = edge ? edge.source : null;
+    }
+    return path;
+  }, [lastNodeId, edges]);
+
+  const styledNodes = useMemo(() => {
+    return nodes.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        isHighlighted: selectedPath.has(n.id)
+      }
+    }));
+  }, [nodes, selectedPath]);
+
+  const styledEdges = useMemo(() => {
+    return edges.map(e => ({
+      ...e,
+      animated: selectedPath.has(e.target),
+      style: {
+        ...e.style,
+        stroke: selectedPath.has(e.target) ? '#7c3aed' : '#e2e8f0',
+        strokeWidth: selectedPath.has(e.target) ? 3 : 2,
+        opacity: selectedPath.has(e.target) ? 1 : 0.3
+      }
+    }));
+  }, [edges, selectedPath]);
+
+  const onNodeClick = (_: any, node: any) => {
+    setSelectedPathNodeId(node.id);
+    setViewMode('chat');
+  };
 
   return (
     <div className="bg-slate-50 font-sans text-slate-900 h-screen flex flex-col">
@@ -78,20 +123,61 @@ export function Review() {
               )}
             </div>
             {setupData.name && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 rounded-b-xl">
                 <h3 className="text-white font-bold text-lg">{setupData.name}</h3>
               </div>
             )}
           </div>
           
           {/* Profile Info */}
-          <div className="mt-auto pt-4 border-t border-slate-100">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('review.profile')}</h3>
-            <p className="text-sm text-slate-700 mb-4">{setupData.profile || 'N/A'}</p>
-            
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('review.yourProfile')}</h3>
-            <p className="text-sm text-slate-700 mb-1"><span className="font-semibold">{t('review.name')}</span> {setupData.userName || 'N/A'}</p>
-            <p className="text-sm text-slate-700"><span className="font-semibold">{t('review.relationship')}</span> {setupData.relationship || 'N/A'}</p>
+          <div className="mt-auto space-y-4">
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{t('setup.objective')}</h3>
+              <div className="bg-violet-50 border border-violet-100 p-3 rounded-xl">
+                <p className="text-xs font-medium text-violet-800 leading-relaxed">
+                  {setupData.objective}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{t('setup.personality')}</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {setupData.profile?.split('.').map((part, i) => {
+                  const personalityPrefix = t('setup.personality');
+                  if (part.includes(personalityPrefix)) {
+                    return part.split(':')[1]?.split(',').map((trait, j) => (
+                      <span key={`trait-${i}-${j}`} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase tracking-wider border border-slate-200">
+                        {trait.trim()}
+                      </span>
+                    ));
+                  }
+                  return null;
+                })}
+              </div>
+              {setupData.profile?.includes(t('setup.notes')) && (
+                <div className="mt-3">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">{t('setup.notes')}</span>
+                  <p className="text-[11px] text-slate-600 italic leading-snug">
+                    {setupData.profile.split(`${t('setup.notes')}:`)[1]?.trim()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{t('review.yourProfile')}</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('review.name')}</span>
+                  <span className="text-xs font-semibold text-slate-700">{setupData.userName || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('review.relationship')}</span>
+                  <span className="text-xs font-semibold text-slate-700">{setupData.relationship || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -125,12 +211,12 @@ export function Review() {
           {viewMode === 'chat' ? (
             <div className="flex-1 overflow-y-auto p-8 pt-20">
               <div className="max-w-3xl mx-auto space-y-6">
-                {history.length === 0 ? (
+                {history.length === 0 || (history.length === 1 && history[0].role === 'start') ? (
                   <div className="text-center text-slate-500 mt-10">
                     {t('review.noHistory')}
                   </div>
                 ) : (
-                  history.map((msg, idx) => (
+                  history.filter(msg => msg.role !== 'start').map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] rounded-2xl px-5 py-4 shadow-sm ${
                         msg.role === 'user' 
@@ -168,9 +254,10 @@ export function Review() {
           ) : (
             <div className="flex-1 relative">
               <ReactFlow 
-                nodes={nodes} 
-                edges={edges}
+                nodes={styledNodes} 
+                edges={styledEdges}
                 nodeTypes={nodeTypes}
+                onNodeClick={onNodeClick}
                 fitView
                 className="bg-slate-50"
               >

@@ -30,13 +30,18 @@ const playRewindSound = () => {
 };
 
 export const CustomNode = memo(({ id, data }: { id: string, data: CustomNodeData }) => {
-  const { rewindToNode, currentNodeId } = useSimulation();
+  const { rewindToNode, currentNodeId, isRecording, nodes, edges } = useSimulation();
   const { t } = useTranslation();
-
+  
   const isUser = data.role === 'user';
   const isGhost = data.isGhost;
   const isInterrupted = data.isInterrupted;
   const isCurrent = id === currentNodeId;
+  const isHighlighted = data.isHighlighted as boolean;
+
+  // Check if this is the "Live" node (last node in the main path AND we are actively recording)
+  const isLastNode = !isGhost && !nodes.some(n => edges.some(e => e.source === id && e.target === n.id));
+  const isLive = isRecording && isCurrent && isLastNode && !isGhost && data.role !== 'start';
 
   let bgClass = 'bg-white border-slate-200';
   let textClass = 'text-slate-700';
@@ -57,7 +62,11 @@ export const CustomNode = memo(({ id, data }: { id: string, data: CustomNodeData
     textClass = 'text-red-800 line-through opacity-70';
   }
 
-  let ringClass = isCurrent ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-slate-50 shadow-[0_0_20px_rgba(124,58,237,0.2)]' : '';
+  let ringClass = isCurrent 
+    ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-slate-50 shadow-[0_0_20px_rgba(124,58,237,0.2)]' 
+    : isHighlighted 
+      ? 'ring-2 ring-violet-300 ring-offset-1 shadow-md' 
+      : '';
 
   const handleRewind = () => {
     playRewindSound();
@@ -74,9 +83,15 @@ export const CustomNode = memo(({ id, data }: { id: string, data: CustomNodeData
 
   return (
     <div className={`relative min-w-[250px] max-w-[300px] rounded-2xl border p-4 shadow-xl transition-all hover:shadow-2xl ${bgClass} ${ringClass}`}>
-      {isCurrent && (
+      {isCurrent && !isLastNode && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] uppercase font-bold px-3 py-0.5 rounded-full shadow-sm whitespace-nowrap z-10">
           {t('sim.startPoint')}
+        </div>
+      )}
+      {isLive && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] uppercase font-bold px-3 py-0.5 rounded-full shadow-sm whitespace-nowrap z-10 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+          Live
         </div>
       )}
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-slate-400 border-2 border-white" />

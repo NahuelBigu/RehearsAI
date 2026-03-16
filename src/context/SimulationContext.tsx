@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 
-export type Role = 'user' | 'ai';
+export type Role = 'user' | 'ai' | 'start';
 
 export interface CustomNodeData extends Record<string, unknown> {
   role: Role;
@@ -23,6 +23,7 @@ interface SetupData {
   relationship: string;
   objective: string;
   profile: string;
+  gender?: 'Male' | 'Female' | 'Other';
   difficulty?: 'Fácil' | 'Intermedio' | 'Difícil';
   userImageBase64: string | null;
   skipImageGeneration?: boolean;
@@ -37,9 +38,14 @@ interface SimulationContextType {
   setAiAvatars: (avatars: Record<string, string>) => void;
   selectedVoice: string;
   setSelectedVoice: (voice: string) => void;
+  hasSelectedVoice: boolean;
+  setHasSelectedVoice: (val: boolean) => void;
   nodes: SimulationNode[];
   edges: Edge[];
   currentNodeId: string | null;
+  isRecording: boolean;
+  setIsRecording: (val: boolean) => void;
+  isRewinding: boolean;
   addNode: (role: Role, text: string, emotion?: string, perception?: string, isGhost?: boolean, parentId?: string, emotionLabel?: string) => string;
   markInterrupted: (nodeId: string) => void;
   rewindToNode: (nodeId: string) => void;
@@ -67,14 +73,41 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   });
   const [aiAvatars, setAiAvatars] = useState<Record<string, string>>({});
   const [selectedVoice, setSelectedVoice] = useState<string>('Zephyr');
+  const [hasSelectedVoice, setHasSelectedVoice] = useState(false);
   
   const [nodes, setNodes] = useState<SimulationNode[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isRewinding, setIsRewinding] = useState(false);
 
   const nodesRef = React.useRef<SimulationNode[]>([]);
   const edgesRef = React.useRef<Edge[]>([]);
   const currentNodeIdRef = React.useRef<string | null>(null);
+
+  const initializeNodes = () => {
+    const startNodeId = 'start-node';
+    const startNode: SimulationNode = {
+      id: startNodeId,
+      type: 'startNode',
+      position: { x: 0, y: 0 },
+      data: {
+        role: 'start',
+        text: '',
+        timestamp: Date.now(),
+      },
+    };
+    nodesRef.current = [startNode];
+    setNodes([startNode]);
+    currentNodeIdRef.current = startNodeId;
+    setCurrentNodeId(startNodeId);
+  };
+
+  React.useEffect(() => {
+    if (nodesRef.current.length === 0) {
+      initializeNodes();
+    }
+  }, []);
 
   // Keep refs in sync with state for any external updates
   React.useEffect(() => {
@@ -102,17 +135,23 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     const currentNodes = nodesRef.current;
     let parent = parentId || currentNodeIdRef.current;
     
-    if (isGhost && !parentId && parent) {
-      // Ghost nodes should be siblings of the current AI node, so they share the same parent
-      const parentEdge = edgesRef.current.find(e => e.target === parent);
-      if (parentEdge) {
-        parent = parentEdge.source;
-      } else {
-        // If there is no parent edge, it means the current node is a root node.
-        // Therefore, its sibling (the ghost node) should also be a root node.
-        parent = null;
+    // "Sibling if same role" rule:
+    // If we are adding a node with the same role as the current node, 
+    // it should be a sibling (share the same parent) ONLY if we are rewinding.
+    if (!parentId && parent && parent !== 'start-node' && isRewinding) {
+      const parentNode = currentNodes.find(n => n.id === parent);
+      if (parentNode && parentNode.data.role === role) {
+        const parentEdge = edgesRef.current.find(e => e.target === parent);
+        if (parentEdge) {
+          parent = parentEdge.source;
+        } else {
+          parent = null;
+        }
       }
     }
+
+    // Reset rewinding state after adding a node
+    setIsRewinding(false);
     
     // Calculate position based on parent
     let x = 0;
@@ -290,32 +329,31 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   };
 
   const rewindToNode = React.useCallback((nodeId: string) => {
-    const targetEdge = edgesRef.current.find(e => e.target === nodeId);
-    const parentId = targetEdge ? targetEdge.source : null;
-    
-    if (!parentId) return; // Cannot rewind root
+    const targetNode = nodesRef.current.find(n => n.id === nodeId);
+    if (!targetNode) return;
 
-    // Calculate path from current node up to parentId for animation
+    // Calculate path from current node up to targetNode for animation
     const path: string[] = [];
     let curr = currentNodeIdRef.current;
     
-    while (curr && curr !== parentId) {
+    while (curr && curr !== nodeId) {
       path.push(curr);
       const edge = edgesRef.current.find(e => e.target === curr);
       curr = edge ? edge.source : null;
       if (path.length > 100) break; // safety
     }
     
-    if (curr === parentId) {
-      path.push(parentId);
+    if (curr === nodeId) {
+      path.push(nodeId);
     } else {
       // Fallback if not on same branch
       path.length = 0;
       if (currentNodeIdRef.current) path.push(currentNodeIdRef.current);
-      path.push(parentId);
+      path.push(nodeId);
     }
 
     window.dispatchEvent(new CustomEvent('simulation:rewind', { detail: { path } }));
+    setIsRewinding(true);
   }, []);
 
   const selectGhostNode = React.useCallback((nodeId: string) => {
@@ -343,12 +381,20 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetSimulation = () => {
-    nodesRef.current = [];
+    setSetupData({
+      name: '',
+      userName: '',
+      relationship: '',
+      objective: '',
+      profile: '',
+      userImageBase64: null,
+      skipImageGeneration: false,
+    });
+    setAiAvatars({});
+    setHasSelectedVoice(false);
+    initializeNodes();
     edgesRef.current = [];
-    currentNodeIdRef.current = null;
-    setNodes([]);
     setEdges([]);
-    setCurrentNodeId(null);
   };
 
   return (
@@ -359,9 +405,14 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       setAiAvatars,
       selectedVoice,
       setSelectedVoice,
+      hasSelectedVoice,
+      setHasSelectedVoice,
       nodes,
       edges,
       currentNodeId,
+      isRecording,
+      setIsRecording,
+      isRewinding,
       addNode,
       updateNodeText,
       setNodeText,

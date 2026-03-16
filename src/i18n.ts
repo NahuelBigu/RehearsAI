@@ -62,6 +62,10 @@ const resources = {
       "setup.expert.listening": "Listening...",
       "setup.expert.speaking": "Speaking...",
       "setup.expert.connecting": "Connecting...",
+      "setup.expert.connect": "Connect",
+      "setup.expert.aiResponding": "AI is responding",
+      "setup.expert.aiListening": "AI is listening...",
+      "setup.expert.clickConnect": "Click Connect to start talking to the expert.",
       "setup.expert.start": "Start Simulation",
       "setup.expert.pause": "Pause",
       "setup.expert.resume": "Resume",
@@ -192,14 +196,17 @@ const resources = {
       "api.connect": "Connect API Key",
       "api.desc": "RehearsAI uses advanced Gemini models (Flash Image and Native Audio) that require a Google Cloud API Key with billing enabled.",
       "api.billingInfo": "More information about billing",
-      "api.selectKey": "Select API Key"
+      "api.selectKey": "Select API Key",
+      "setup.gender.male": "Male",
+      "setup.gender.female": "Female",
+      "setup.gender.other": "Other"
     }
   },
   es: {
     translation: {
       "setup.title": "Nueva Simulación",
       "setup.subtitle": "Configura los parámetros para tu conversación crítica.",
-      "setup.name": "Nombre de la IA",
+      "setup.name": "Nombre a interpretar",
       "setup.namePlaceholder": "ej., Alex, Dr. García",
       "setup.userName": "Tu Nombre",
       "setup.userNamePlaceholder": "ej., Taylor",
@@ -254,6 +261,10 @@ const resources = {
       "setup.expert.listening": "Escuchando...",
       "setup.expert.speaking": "Hablando...",
       "setup.expert.connecting": "Conectando...",
+      "setup.expert.connect": "Conectar",
+      "setup.expert.aiResponding": "IA está respondiendo",
+      "setup.expert.aiListening": "IA está escuchando...",
+      "setup.expert.clickConnect": "Haz clic en Conectar para empezar a hablar con el experto.",
       "setup.expert.start": "Iniciar Simulación",
       "setup.expert.pause": "Pausar",
       "setup.expert.resume": "Reanudar",
@@ -317,7 +328,7 @@ const resources = {
       "setup.diff.hard": "Difícil",
       "setup.diff.hardDesc": "Interlocutor escéptico, defensivo o con recursos limitados.",
 
-      "sim.startPoint": "Punto de inicio",
+      "sim.startPoint": "Punto a rehacer",
       "sim.aiAlt": "Alternativa IA",
       "sim.user": "Usuario",
       "sim.ai": "IA",
@@ -384,7 +395,10 @@ const resources = {
       "api.connect": "Conectar API Key",
       "api.desc": "RehearsAI utiliza modelos avanzados de Gemini (Flash Image y Native Audio) que requieren una API Key de Google Cloud con facturación habilitada.",
       "api.billingInfo": "Más información sobre facturación",
-      "api.selectKey": "Seleccionar API Key"
+      "api.selectKey": "Seleccionar API Key",
+      "setup.gender.male": "Masculino",
+      "setup.gender.female": "Femenino",
+      "setup.gender.other": "Otro"
     }
   }
 };
