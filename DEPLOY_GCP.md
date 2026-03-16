@@ -45,9 +45,15 @@ You will pass your `GEMINI_API_KEY` as a **Cloud Run environment variable**:
 
 You will attach this secret to the Cloud Run service in a later step.
 
-### 5. Create a containerized static server (Cloud Buildpacks)
+### 5. Create a containerized static server (Cloud Buildpacks + Express)
 
-Cloud Run needs a container image. The easiest way (without Dockerfile) is to let **Cloud Build** generate it from your source:
+Cloud Run needs a container image. The easiest way (without Dockerfile) is to let **Cloud Build** generate it from your source.  
+This repo incluye un pequeño servidor Express (`server.cjs`) que sirve el contenido estático de `dist` y escucha en `PORT`:
+
+```bash
+npm run build        # genera dist
+npm start            # arranca Express en process.env.PORT (8080 en Cloud Run)
+```
 
 1. Push your project to a Git repository (GitHub, GitLab or Cloud Source Repositories).
 2. In Cloud Console, go to **Cloud Run**.
