@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RehearsAI — Architecture Diagram</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 40px 24px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #a78bfa, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 48px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── DIAGRAM WRAPPER ─────────────────────────────────────────── */
+    .diagram {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* ── LAYER CARD ──────────────────────────────────────────────── */
+    .layer {
+      border-radius: 16px;
+      padding: 24px 28px;
+      border: 1px solid;
+      position: relative;
+    }
+
+    .layer-label {
+      position: absolute;
+      top: -13px;
+      left: 24px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 2px 12px;
+      border-radius: 20px;
+    }
+
+    /* USER LAYER */
+    .layer-user {
+      background: #1a1f35;
+      border-color: #3b82f6;
+    }
+    .layer-user .layer-label {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    /* BRAIN LAYER */
+    .layer-brain {
+      background: #1a1a2e;
+      border-color: #a78bfa;
+      margin-top: 12px;
+    }
+    .layer-brain .layer-label {
+      background: #a78bfa;
+      color: #fff;
+    }
+
+    /* LOGIC LAYER */
+    .layer-logic {
+      background: #0f1f1a;
+      border-color: #34d399;
+      margin-top: 12px;
+    }
+    .layer-logic .layer-label {
+      background: #34d399;
+      color: #0f1f1a;
+    }
+
+    /* CONNECTIONS LAYER */
+    .layer-conn {
+      background: #1a1510;
+      border-color: #fb923c;
+      margin-top: 12px;
+    }
+    .layer-conn .layer-label {
+      background: #fb923c;
+      color: #fff;
+    }
+
+    /* ── SECTION TITLE ───────────────────────────────────────────── */
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #f1f5f9;
+      margin-top: 8px;
+    }
+
+    /* ── BOXES ROW ───────────────────────────────────────────────── */
+    .boxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .box {
+      border-radius: 12px;
+      padding: 14px 18px;
+      min-width: 160px;
+      flex: 1;
+      border: 1px solid;
+    }
+
+    .box-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .box-detail {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+
+    /* Box colour variants */
+    .box-blue   { background: #172554; border-color: #3b82f6; }
+    .box-blue   .box-title  { color: #93c5fd; }
+
+    .box-indigo { background: #1e1b4b; border-color: #6366f1; }
+    .box-indigo .box-title  { color: #c7d2fe; }
+
+    .box-purple { background: #2e1065; border-color: #a855f7; }
+    .box-purple .box-title  { color: #d8b4fe; }
+
+    .box-green  { background: #052e16; border-color: #22c55e; }
+    .box-green  .box-title  { color: #86efac; }
+
+    .box-teal   { background: #042f2e; border-color: #14b8a6; }
+    .box-teal   .box-title  { color: #99f6e4; }
+
+    .box-orange { background: #431407; border-color: #f97316; }
+    .box-orange .box-title  { color: #fdba74; }
+
+    .box-yellow { background: #422006; border-color: #eab308; }
+    .box-yellow .box-title  { color: #fde047; }
+
+    .box-slate  { background: #0f172a; border-color: #475569; }
+    .box-slate  .box-title  { color: #94a3b8; }
+
+    /* ── ARROW ───────────────────────────────────────────────────── */
+    .arrow-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      padding: 6px 0;
+      font-size: 11px;
+      color: #475569;
+    }
+
+    .arrow-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .arrow-label {
+      font-size: 10px;
+      color: #64748b;
+      text-align: center;
+      background: #1e293b;
+      padding: 2px 10px;
+      border-radius: 20px;
+      border: 1px solid #334155;
+    }
+
+    .arrow-shaft {
+      width: 2px;
+      height: 24px;
+      background: linear-gradient(to bottom, #475569, #94a3b8);
+      position: relative;
+    }
+
+    .arrow-shaft::after {
+      content: '▼';
+      position: absolute;
+      bottom: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .arrow-shaft.up-down::before {
+      content: '▲';
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* ── FLOW ROW (horizontal steps) ────────────────────────────── */
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      line-height: 1.5;
+      min-width: 130px;
+      flex: 1;
+      text-align: center;
+    }
+
+    .flow-step strong {
+      display: block;
+      font-size: 13px;
+      color: #f1f5f9;
+      margin-bottom: 3px;
+    }
+
+    .flow-arrow {
+      font-size: 18px;
+      color: #475569;
+      padding: 0 6px;
+      flex-shrink: 0;
+    }
+
+    /* ── DATA FLOW SECTION ───────────────────────────────────────── */
+    .flow-section {
+      margin-top: 16px;
+    }
+
+    .flow-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    /* ── TWO COLUMN ──────────────────────────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .two-col { grid-template-columns: 1fr; }
+      .flow-row { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>RehearsAI — Architecture Diagram</h1>
+  <p class="subtitle">React SPA → Gemini Live API · Google Cloud</p>
+
+  <div class="diagram">
+
+    <div class="layer layer-user">
+      <span class="layer-label">User &amp; Frontend</span>
+
+      <p class="section-title">Browser (React SPA)</p>
+
+      <div class="boxes">
+
+        <div class="box box-blue">
+          <div class="box-title">Setup</div>
+          <div class="box-detail">
+            Configure scenario: relationship, goal, personality. Optional portrait photo.
+          </div>
+        </div>
+
+        <div class="box box-indigo">
+          <div class="box-title">Generating Assets</div>
+          <div class="box-detail">
+            AI generates 6 emotion avatars from photo; detects voice gender.
+          </div>
+        </div>
+
+        <div class="box box-purple">
+          <div class="box-title">Simulation</div>
+          <div class="box-detail">
+            Real-time conversation: mic + camera → Gemini Live. Rewind and branch the conversation tree.
+          </div>
+        </div>
+
+        <div class="box box-slate">
+          <div class="box-title">Review</div>
+          <div class="box-detail">
+            Interactive graph of the conversation tree; inspect emotions and perceptions.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flow-section">
+        <div class="flow-section-title">Simulation data flow</div>
+        <div class="flow-row">
+          <div class="flow-step"><strong>Mic + Camera</strong> Browser</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step" style="border-color:#a78bfa; color:#d8b4fe;"><strong>Gemini Live</strong> Audio + vision in</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step"><strong>Speaker</strong> Audio out</div>
+        </div>
+      </div>
+
+      <div class="flow-section">
+        <div class="flow-section-title">State (browser only, no backend)</div>
+        <div class="two-col">
+          <div class="box box-blue" style="min-width:0;">
+            <div class="box-title">Conversation graph</div>
+            <div class="box-detail">Nodes and edges in memory; rewind and branch.</div>
+          </div>
+          <div class="box box-slate" style="min-width:0;">
+            <div class="box-title">Session</div>
+            <div class="box-detail">User name and preferences; not persisted to server.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow-line">
+        <div class="arrow-label">HTTPS REST  ·  WebSocket (Live API)</div>
+        <div class="arrow-shaft up-down"></div>
+      </div>
+    </div>
+
+    <div class="layer layer-brain">
+      <span class="layer-label">The Brain — Google Gemini API</span>
+
+      <p class="section-title">Gemini models</p>
+
+      <div class="boxes">
+
+        <div class="box box-purple">
+          <div class="box-title">Live API (conversation)</div>
+          <div class="box-detail">
+            Bidirectional audio + vision. Calls <code>report_state()</code> with emotion and user perception for the graph.
+          </div>
+        </div>
+
+        <div class="box box-indigo">
+          <div class="box-title">Image generation</div>
+          <div class="box-detail">
+            6 emotion avatars from portrait (neutral, happy, angry, impatient, sad, surprised).
+          </div>
+        </div>
+
+        <div class="box box-blue">
+          <div class="box-title">Analysis / setup</div>
+          <div class="box-detail">
+            Voice/gender from portrait; structured output; rehearsal expert interview.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flow-section">
+        <div class="flow-section-title">During simulation: AI → UI</div>
+        <div class="flow-row">
+          <div class="flow-step" style="border-color:#a78bfa;"><strong>Gemini</strong> Voice + report_state(emotion, perception)</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step" style="border-color:#3b82f6;"><strong>App state</strong> New node in graph</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step" style="border-color:#22c55e;"><strong>UI</strong> Avatar emotion, playback</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow-line">
+        <div class="arrow-label">Served from Cloud Run · Static SPA</div>
+        <div class="arrow-shaft up-down"></div>
+      </div>
+    </div>
+
+    <div class="layer layer-logic">
+      <span class="layer-label">The Logic — Google Cloud</span>
+
+      <p class="section-title">Hosting</p>
+
+      <div class="boxes">
+
+        <div class="box box-green">
+          <div class="box-title">Cloud Run</div>
+          <div class="box-detail">Serves static SPA; serverless, auto-scale to zero.</div>
+        </div>
+
+        <div class="box box-teal">
+          <div class="box-title">Google AI Studio</div>
+          <div class="box-detail">Dev/deploy; API key via env or secrets.</div>
+        </div>
+
+        <div class="box box-slate">
+          <div class="box-title">No backend</div>
+          <div class="box-detail">All logic in browser; no server, no database.</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow-line">
+        <div class="arrow-label">API Key auth  ·  No DB connections</div>
+        <div class="arrow-shaft"></div>
+      </div>
+    </div>
+
+    <div class="layer layer-conn">
+      <span class="layer-label">Connections &amp; Auth</span>
+
+      <p class="section-title">Communication</p>
+
+      <div class="boxes">
+
+        <div class="box box-orange">
+          <div class="box-title">API key</div>
+          <div class="box-detail">Gemini key from .env or AI Studio; optional in-app key picker.</div>
+        </div>
+
+        <div class="box box-yellow">
+          <div class="box-title">@google/genai</div>
+          <div class="box-detail">REST for images and analysis; WebSocket for Live API.</div>
+        </div>
+
+        <div class="box box-slate">
+          <div class="box-title">No DB / no accounts</div>
+          <div class="box-detail">All state in browser; conversations not persisted.</div>
+        </div>
+
+      </div>
+
+      <div class="flow-section">
+        <div class="flow-section-title">End-to-end loop</div>
+        <div class="flow-row">
+          <div class="flow-step" style="border-color:#3b82f6; color:#93c5fd;"><strong>User</strong> Mic + camera</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step" style="border-color:#6366f1; color:#c7d2fe;"><strong>Browser</strong> Audio + frames</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step" style="border-color:#a855f7; color:#d8b4fe;"><strong>Gemini Live</strong> Reply + report_state</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step" style="border-color:#22c55e; color:#86efac;"><strong>UI</strong> Graph node, avatar, audio</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
