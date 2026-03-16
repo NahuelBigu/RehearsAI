@@ -8,6 +8,13 @@ export function ApiKeyDialog({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkKey = async () => {
+      // If an API key is already provided via environment variables,
+      // skip the selection dialog entirely.
+      if (process.env.GEMINI_API_KEY) {
+        setHasKey(true);
+        return;
+      }
+
       try {
         // @ts-ignore
         const isSelected = await window.aistudio?.hasSelectedApiKey();
