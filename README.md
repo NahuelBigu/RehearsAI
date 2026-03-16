@@ -1,10 +1,10 @@
 ## RehearsAI
 ---
 
-**RehearsAI** es un simulador de conversaciones difíciles impulsado por IA multimodal.  
-Te permite practicar conversaciones importantes (subir el sueldo, feedback delicado, rupturas, negociaciones, etc.) en un entorno seguro, explorando distintos caminos y resultados antes de vivir la situación real.
+**RehearsAI** is a simulator for difficult, high‑stakes conversations powered by multimodal AI.  
+It lets you safely rehearse important moments (asking for a raise, giving tough feedback, break‑ups, negotiations, etc.), exploring different paths and outcomes before the real conversation happens.
 
-En lugar de limitarse a un chat de texto, RehearsAI usa **voz, cámara y un avatar emocional** para capturar señales como tono de voz, expresiones faciales y lenguaje corporal, y representar la conversación como un **árbol de decisiones explorable**.
+Instead of a plain text chat, RehearsAI uses **voice, camera, and an emotional avatar** to capture cues like tone of voice, facial expressions, and body language, and represents the interaction as an **explorable decision tree**.
 
 ---
 
@@ -13,157 +13,157 @@ En lugar de limitarse a un chat de texto, RehearsAI usa **voz, cámara y un avat
 </div>
 
 
-## Características principales
+## Key features
 
-- **Simulador de conversaciones reales**: habla por voz con un agente que interpreta el papel de la otra persona.
-- **Configuración guiada del escenario**:
-  - relación (jefe, compañero, amigo, pareja, etc.),
-  - objetivo de la conversación,
-  - personalidad de la persona simulada,
-  - nivel de dificultad.
-- **Rehearsal Expert**: asistente que te entrevista y construye automáticamente el escenario completo a partir de tus respuestas.
-- **Avatares emocionales dinámicos**:
-  - puedes subir una foto de la persona real,
-  - el sistema genera un avatar con varias expresiones (neutral, feliz, enfadado, impaciente, triste, sorprendido),
-  - las expresiones cambian según el estado emocional de la conversación.
-- **Interacción multimodal en tiempo real**:
-  - entrada y salida de voz,
-  - uso de cámara para captar señales visuales,
-  - interrupciones naturales (si empiezas a hablar, la IA corta su respuesta).
-- **Árbol de conversación explorable**:
-  - cada mensaje es un nodo en un árbol de decisiones,
-  - puedes **rebobinar** a cualquier punto y responder de otra forma,
-  - puedes generar **respuestas alternativas** y explorar ramas paralelas,
-  - al final revisas todo el árbol para comparar estrategias y resultados.
+- **Real conversation simulation**: talk by voice with an agent that plays the role of the other person.
+- **Guided scenario setup**:
+  - relationship (manager, coworker, friend, partner, etc.),
+  - goal of the conversation,
+  - personality of the simulated person,
+  - difficulty level.
+- **Rehearsal Expert**: an assistant that interviews you and automatically builds the full scenario from your answers.
+- **Dynamic emotional avatars**:
+  - you can upload a photo of the real person,
+  - the system generates an avatar with multiple expressions (neutral, happy, angry, impatient, sad, surprised),
+  - expressions update according to the emotional state of the conversation.
+- **Real‑time multimodal interaction**:
+  - voice input and output,
+  - camera usage to capture visual signals,
+  - natural interruptions (if you start talking, the AI stops its response).
+- **Explorable conversation tree**:
+  - each message becomes a node in a decision tree,
+  - you can **rewind** to any point and reply differently,
+  - you can generate **alternative responses** and explore parallel branches,
+  - at the end you review the full tree to compare strategies and outcomes.
 
 ---
 
-## Cómo está construida la app
+## How the app is built
 
-RehearsAI está diseñada como una **arquitectura de agente multimodal** que combina interacción en tiempo real con una memoria estructurada de la conversación.
+RehearsAI is designed as a **multimodal agent architecture** that combines real‑time interaction with a structured conversation memory.
 
 - **Frontend**
   - React 19 + TypeScript
   - Vite (build tool)
   - Tailwind CSS 4
   - React Router 7
-  - React Flow (`@xyflow/react`) para la visualización del árbol de conversación
-  - Motion para animaciones
-  - Lucide React para iconografía
-  - Web Audio API para captura y reproducción de audio
-  - MediaStream API para la cámara
+  - React Flow (`@xyflow/react`) for the conversation tree visualization
+  - Motion for animations
+  - Lucide React for icons
+  - Web Audio API for audio capture and playback
+  - MediaStream API for camera input
 
-- **Motor de conversación**
-  - La conversación se almacena como un **grafo en memoria** en el estado de React.
-  - Cada mensaje es un nodo, lo que permite:
-    - ramas de conversación,
-    - rebobinado a puntos anteriores,
-    - exploración de finales alternativos.
+- **Conversation engine**
+  - The conversation is stored as an **in‑memory graph** in React state.
+  - Each message is a node, enabling:
+    - branching conversation paths,
+    - rewinding to previous points,
+    - exploring alternative endings.
 
-- **Capa de percepción multimodal**
-  - Procesa:
-    - tono e intensidad de voz,
-    - expresiones faciales,
-    - postura y lenguaje corporal (a través de cámara),
-    - estilo de comunicación.
-  - Estas señales influyen en:
-    - cómo responde el agente,
-    - qué expresión muestra el avatar,
-    - hacia dónde se dirige la conversación.
+- **Multimodal perception layer**
+  - Processes:
+    - voice tone and intensity,
+    - facial expressions,
+    - posture and body language (via camera),
+    - communication style.
+  - These signals influence:
+    - how the agent responds,
+    - which expression the avatar shows,
+    - where the conversation goes next.
 
-- **Generación de persona de IA**
-  - El usuario define personalidad y sube una foto de la persona a simular.
-  - Con **Google Gemini** se generan:
-    - avatares con distintas emociones,
-    - detección de género para seleccionar la voz adecuada.
-  - Esto construye una persona de IA coherente en tono, estilo y comportamiento.
+- **AI persona generation**
+  - The user defines a personality and uploads a photo of the person to simulate.
+  - Using **Google Gemini**, the system generates:
+    - avatars with different emotions,
+    - gender detection to choose an appropriate voice.
+  - This creates a consistent AI persona in tone, style, and behavior.
 
-- **Stack técnico (resumen)**
+- **Tech stack (summary)**
   - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, React Router 7, React Flow, Motion, Lucide React.
-  - **IA:** Google Gemini API — Live voice (`gemini-2.5-flash-native-audio-preview`), generación de imágenes (`gemini-3.1-flash-image-preview`), texto/voz (`gemini-3-flash-preview`).
-  - **Runtime web:** Web Audio API, MediaStream API, Gemini Live API para streaming multimodal.
-  - **Estado:** grafo de conversación en memoria (React Context), sin persistencia de backend.
+  - **AI:** Google Gemini API — Live voice (`gemini-2.5-flash-native-audio-preview`), image generation (`gemini-3.1-flash-image-preview`), text/voice (`gemini-3-flash-preview`).
+  - **Web runtime:** Web Audio API, MediaStream API, Gemini Live API for multimodal streaming.
+  - **State:** in‑memory conversation graph (React Context), no backend persistence.
 
 ---
 
-## Requisitos para levantar la app
+## Requirements to run the app
 
-- **Node.js** (se recomienda la versión LTS reciente, por ejemplo ≥ 20).
-- Una clave de API de **Google Gemini** con acceso a:
+- **Node.js** (recommended: recent LTS, for example ≥ 20).
+- A **Google Gemini** API key with access to:
   - Gemini Live / audio,
-  - generación de imagen,
-  - modelos de texto.
+  - image generation,
+  - text models.
 
 ---
 
-## Configuración del entorno
+## Environment configuration
 
-1. Crea un archivo `.env.local` en la raíz del proyecto (junto a `package.json`).
-2. Define tu clave de Gemini:
+1. Create a `.env.local` file in the project root (next to `package.json`).
+2. Define your Gemini key:
 
    ```bash
-   GEMINI_API_KEY=tu_clave_de_gemini_aquí
+   GEMINI_API_KEY=your_gemini_key_here
    ```
 
-3. Guarda el archivo. Vite cargará estas variables en tiempo de ejecución.
+3. Save the file. Vite will load these variables at runtime.
 
 ---
 
-## Instalación y ejecución en local
+## Local installation and development
 
-En la raíz del proyecto (`RehearsAI`):
+From the project root (`RehearsAI`):
 
-1. **Instalar dependencias**
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. **Levantar el entorno de desarrollo**
+2. **Start the development server**
 
    ```bash
    npm run dev
    ```
 
-3. Abre en el navegador la URL que te indique Vite (por defecto suele ser `http://localhost:3000`).
+3. Open in your browser the URL printed by Vite (by default it’s usually `http://localhost:3000`).
 
 ---
 
-## Scripts disponibles
+## Available scripts
 
-Desde la raíz del proyecto:
+From the project root:
 
-- **`npm run dev`**: levanta el servidor de desarrollo de Vite en `0.0.0.0:3000`.
-- **`npm run build`**: genera el build de producción en la carpeta `dist`.
-- **`npm run preview`**: sirve localmente el build de producción para pruebas.
-- **`npm run clean`**: elimina la carpeta `dist`.
-- **`npm run lint`**: ejecuta TypeScript (`tsc --noEmit`) para comprobar tipos.
-
----
-
-## Casos de uso e ideas de aplicación
-
-Algunos contextos donde RehearsAI puede aportar valor:
-
-- **Entrenamiento de habilidades de liderazgo**: practicar conversaciones difíciles con miembros del equipo.
-- **Formación en RRHH**: simulación de entrevistas complejas, feedback de desempeño, conversaciones sensibles.
-- **Negociaciones**: explorar diferentes estrategias antes de negociaciones importantes.
-- **Preparación terapéutica o personal**: ensayar conversaciones emocionales o delicadas con personas cercanas.
+- **`npm run dev`**: starts the Vite development server on `0.0.0.0:3000`.
+- **`npm run build`**: builds the production bundle into the `dist` folder.
+- **`npm run preview`**: serves the production build locally for testing.
+- **`npm run clean`**: removes the `dist` folder.
+- **`npm run lint`**: runs TypeScript (`tsc --noEmit`) for type checking.
 
 ---
 
-## Visión futura
+## Use cases and applications
 
-Algunas direcciones naturales de evolución para el proyecto:
+Some contexts where RehearsAI can provide value:
 
-- **Coaching de comunicación**:
-  - análisis automático del árbol de conversación,
-  - feedback sobre estrategias, lenguaje y momentos de escalada emocional.
-- **Simuladores de formación**:
-  - integración en programas de liderazgo, RRHH, negociación y talleres.
-- **Modelado emocional avanzado**:
-  - simulación de dinámicas de estrés y persuasión,
-  - mayor memoria a largo plazo de la relación entre personas.
+- **Leadership skills training**: rehearse difficult conversations with team members.
+- **HR training**: simulate complex interviews, performance feedback, and sensitive conversations.
+- **Negotiations**: explore different strategies before important negotiations.
+- **Therapeutic or personal preparation**: practice emotional or delicate conversations with people close to you.
 
-El objetivo a largo plazo es que RehearsAI se convierta en un **entorno personal de entrenamiento para conversaciones humanas difíciles**, donde sea seguro equivocarse, probar, y aprender.
+---
+
+## Future vision
+
+Some natural directions for the project:
+
+- **Communication coaching**:
+  - automatic analysis of the conversation tree,
+  - feedback on strategies, language, and escalation moments.
+- **Training simulators**:
+  - integration into leadership, HR, negotiation, and workshop programs.
+- **Advanced emotional modeling**:
+  - simulation of stress and persuasion dynamics,
+  - richer long‑term memory of the relationship between people.
+
+The long‑term goal is for RehearsAI to become a **personal training environment for difficult human conversations**, where it is safe to make mistakes, experiment, and learn.
 
