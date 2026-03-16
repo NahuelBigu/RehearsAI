@@ -1,7 +1,7 @@
 ## RehearsAI
 
 <div align="center">
-  <img src="./images/Simulation.png" alt="RehearsAI simulation" width="100%" />
+  <img src="./images/Simulation Alternative.png" alt="RehearsAI simulation" width="100%" />
 </div>
 
 ---
