@@ -1,9 +1,4 @@
 ## RehearsAI
-
-<div align="center">
-  <img src="./images/Simulation Alternative.png" alt="RehearsAI simulation" width="100%" />
-</div>
-
 ---
 
 **RehearsAI** es un simulador de conversaciones difíciles impulsado por IA multimodal.  
@@ -12,6 +7,11 @@ Te permite practicar conversaciones importantes (subir el sueldo, feedback delic
 En lugar de limitarse a un chat de texto, RehearsAI usa **voz, cámara y un avatar emocional** para capturar señales como tono de voz, expresiones faciales y lenguaje corporal, y representar la conversación como un **árbol de decisiones explorable**.
 
 ---
+
+<div align="center">
+  <img src="./images/Simulation Alternative.png" alt="RehearsAI simulation" width="100%" />
+</div>
+
 
 ## Características principales
 
